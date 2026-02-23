@@ -81,5 +81,5 @@ Obtuvimos 0.76 como indice, esto se encuentra entre 0.7 y 0.8, lo cual nos indic
 matriz <- cor(datos_pca[,-1],use = "pairwise.complete.obs")
 corrplot(matriz)
 ```
-
+La matriz de correlación muestra múltiples correlaciones positivas moderadas y fuertes entre variables como revenue, voteCount y voteAvg, así como entre las variables relacionadas con el reparto y la producción. Esto indica redundancia de información y presencia de multicolinealidad, lo cual respalda la aplicación del Análisis de Componentes Principales para sintetizar la información en un menor número de componentes.
 
