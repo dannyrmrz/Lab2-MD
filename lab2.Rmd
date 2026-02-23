@@ -21,7 +21,9 @@ library(paran)
 
 
 ```{r datos}
-movies <- read.csv("movies_2026.csv")
+movies <- read.csv("movies_2026.csv", stringsAsFactors = F)
+
+str(movies)
 ```
 
 
@@ -45,7 +47,35 @@ plot(pressure)
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
-```{r matriz-correlación}
+```{r datos-pca}
+datos_pca <- movies[, c(
+  "budget",
+  "revenue",
+  "runtime",
+  "popularity",
+  "voteAvg",
+  "voteCount",
+  "genresAmount",
+  "productionCoAmount",
+  "productionCountriesAmount",
+  "actorsAmount",
+  "castWomenAmount",
+  "castMenAmount"
+)]
+```
+
+
+```{r aplicar-pca}
+rcor<-cor(datos_pca, use = "complete.obs")
+det(rcor)
+
+KMO(as.matrix(datos_pca))
 
 ```
+
+```{r matriz-correlación}
+matriz <- cor(datos_pca[,-1],use = "pairwise.complete.obs")
+corrplot(matriz)
+```
+
 
