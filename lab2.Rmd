@@ -5,26 +5,146 @@ date: "2026-02-23"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+#Librerias empleadas
+library(tidyverse)
+library(lubridate)
+library(cluster)
+library(factoextra)
+library(hopkins)
+library(NbClust)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+# Cargar datos
+movies <- read.csv("movies_2026.csv", stringsAsFactors = FALSE)
 ```
 
-## Including Plots
+```{r}
+#Preprocesamiento de datos
 
-You can also embed plots, for example:
+# Eliminar variables que no aportan al clustering
+movies_clust <- movies %>%
+  select(-id,
+         -originalTitle,
+         -title,
+         -homePage,
+         -director,
+         -actors,
+         -actorsCharacter,
+         -productionCompany,
+         -productionCompanyCountry,
+         -productionCountry,
+         -releaseDate)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Eliminar NA
+movies_clust <- movies_clust %>%
+  drop_na()
+
+# Seleccionar variables numéricas
+movies_num <- movies_clust %>%
+  select(where(is.numeric))
+
+# Escalar datos
+movies_scaled <- scale(movies_num)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+
+set.seed(123)
+
+# Tomar muestra de 1000 observaciones
+sample_index <- sample(1:nrow(movies_scaled), 1000)
+
+movies_sample <- movies_scaled[sample_index, ]
+
+# Hopkins
+hopkins_stat <- hopkins::hopkins(
+  X = movies_sample,
+  m = floor(0.1 * nrow(movies_sample))
+)
+
+hopkins_stat
+
+
+# VAT con muestra
+dist_matrix_sample <- dist(movies_sample)
+
+image(as.matrix(dist_matrix_sample),
+      main = "VAT - Visual Assessment (Sample)")
+```
+```{r}
+#Codo
+
+fviz_nbclust(movies_scaled, kmeans, method = "wss") +
+  ggtitle("Método del Codo")
+
+# Ajustar según gráfica
+k_opt <- 3
+```
+
+```{r}
+#k-means
+
+set.seed(123)
+
+kmeans_model <- kmeans(
+  movies_scaled,
+  centers = k_opt,
+  nstart = 25
+)
+
+movies_clust$kmeans_cluster <- kmeans_model$cluster
+```
+
+```{r}
+#Clustering jerárquico
+
+dist_matrix <- dist(movies_scaled)
+
+hc_model <- hclust(dist_matrix, method = "ward.D2")
+
+plot(hc_model, labels = FALSE)
+
+hc_clusters <- cutree(hc_model, k = k_opt)
+
+movies_clust$hc_cluster <- hc_clusters
+```
+
+```{r}
+#Silueta
+
+# K-means
+sil_kmeans <- silhouette(kmeans_model$cluster, dist_matrix)
+
+fviz_silhouette(sil_kmeans)
+
+mean(sil_kmeans[, 3])
+
+
+# Jerárquico
+sil_hc <- silhouette(hc_clusters, dist_matrix)
+
+fviz_silhouette(sil_hc)
+
+mean(sil_hc[, 3])
+```
+
+```{r}
+#Interpretación de datos
+movies_clust %>%
+  group_by(kmeans_cluster) %>%
+  summarise(across(where(is.numeric), mean))
+
+# Géneros
+movies_clust %>%
+  group_by(kmeans_cluster, genres) %>%
+  summarise(n = n()) %>%
+  arrange(kmeans_cluster, desc(n))
+
+# Idioma original
+movies_clust %>%
+  group_by(kmeans_cluster, originalLanguage) %>%
+  summarise(n = n()) %>%
+  arrange(kmeans_cluster, desc(n))
+```
