@@ -72,6 +72,10 @@ det(rcor)
 KMO(as.matrix(datos_pca))
 
 ```
+Al obtener la determinante de la matriz de correlación, nos indica que las variables si están relacionadas entre si.
+
+Utilizamos KMO para determinar si se puede utilizar análisis factorial para las combinaciones lineales de las variables.
+Obtuvimos 0.76 como indice, esto se encuentra entre 0.7 y 0.8, lo cual nos indica que es una adecuación muestral aceptable.
 
 ```{r matriz-correlación}
 matriz <- cor(datos_pca[,-1],use = "pairwise.complete.obs")
