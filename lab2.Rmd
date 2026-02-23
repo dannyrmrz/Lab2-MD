@@ -13,11 +13,20 @@ library(cluster)
 library(factoextra)
 library(hopkins)
 library(NbClust)
+library(psych)
+library(FactoMineR)
+library(fpc)
+library(factoextra)
+library(corrplot)
+library(PCAmixdata)
+library(paran)
 ```
 
-```{r}
-# Cargar datos
-movies <- read.csv("movies_2026.csv", stringsAsFactors = FALSE)
+
+```{r datos}
+movies <- read.csv("movies_2026.csv", stringsAsFactors = F)
+
+str(movies)
 ```
 
 ```{r}
@@ -148,3 +157,41 @@ movies_clust %>%
   summarise(n = n()) %>%
   arrange(kmeans_cluster, desc(n))
 ```
+=======
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r datos-pca}
+datos_pca <- movies[, c(
+  "budget",
+  "revenue",
+  "runtime",
+  "popularity",
+  "voteAvg",
+  "voteCount",
+  "genresAmount",
+  "productionCoAmount",
+  "productionCountriesAmount",
+  "actorsAmount",
+  "castWomenAmount",
+  "castMenAmount"
+)]
+```
+
+```{r aplicar-pca}
+rcor<-cor(datos_pca, use = "complete.obs")
+det(rcor)
+
+KMO(as.matrix(datos_pca))
+
+```
+Al obtener la determinante de la matriz de correlación, nos indica que las variables si están relacionadas entre si.
+
+Utilizamos KMO para determinar si se puede utilizar análisis factorial para las combinaciones lineales de las variables.
+Obtuvimos 0.76 como indice, esto se encuentra entre 0.7 y 0.8, lo cual nos indica que es una adecuación muestral aceptable.
+
+```{r matriz-correlación}
+matriz <- cor(datos_pca[,-1],use = "pairwise.complete.obs")
+corrplot(matriz)
+```
+La matriz de correlación muestra múltiples correlaciones positivas moderadas y fuertes entre variables como revenue, voteCount y voteAvg, así como entre las variables relacionadas con el reparto y la producción. Esto indica redundancia de información y presencia de multicolinealidad, lo cual respalda la aplicación del Análisis de Componentes Principales para sintetizar la información en un menor número de componentes.
+
