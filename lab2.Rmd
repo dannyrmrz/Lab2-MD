@@ -157,8 +157,7 @@ movies_clust %>%
   summarise(n = n()) %>%
   arrange(kmeans_cluster, desc(n))
 ```
-=======
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
 
 ```{r datos-pca}
 datos_pca <- movies[, c(
