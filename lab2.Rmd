@@ -194,3 +194,64 @@ corrplot(matriz)
 ```
 La matriz de correlación muestra múltiples correlaciones positivas moderadas y fuertes entre variables como revenue, voteCount y voteAvg, así como entre las variables relacionadas con el reparto y la producción. Esto indica redundancia de información y presencia de multicolinealidad, lo cual respalda la aplicación del Análisis de Componentes Principales para sintetizar la información en un menor número de componentes.
 
+# Prueba de Esfericidad de Bartlett
+
+``` {r}
+cortest.bartlett(matriz, n = nrow(datos_pca))
+```
+
+La prueba de Bartlett arrojó un estadístico χ² = 50302.23 con 55 grados de libertad y un p-value < 0.001.
+Dado que el valor p es menor a 0.05, se rechaza la hipótesis nula de que la matriz de correlación sea identidad.
+
+Esto indica que existe correlación significativa entre las variables y, por lo tanto, es apropiado aplicar el Análisis de Componentes Principales.
+
+# Índice KMO
+
+``` {r}
+KMO(matriz)
+```
+El índice KMO global fue 0.70, lo cual indica una adecuación aceptable del modelo factorial.
+
+Aunque algunas variables presentan valores individuales bajos (principalmente las relacionadas con el elenco), el valor global sugiere que el conjunto de datos es adecuado para aplicar PCA.
+
+# Ajustes adicionales
+```{r}
+# Convertir a numérico
+datos_pca[] <- lapply(datos_pca, function(x) as.numeric(as.character(x)))
+
+# Eliminar NA
+datos_pca <- na.omit(datos_pca)
+
+# Escalar datos
+datos_scaled <- scale(datos_pca)
+
+# Crear objeto PCA
+pca <- prcomp(datos_scaled, center = TRUE, scale. = TRUE)
+```
+
+
+```{r}
+summary(pca)
+fviz_eig(pca, addlabels = TRUE)
+round(pca$rotation, 3)
+```
+
+El análisis muestra que:
+
+La primera componente explica 38.23% de la varianza.
+
+Las primeras cuatro componentes explican aproximadamente 71% de la variabilidad total.
+
+Por lo tanto, se seleccionan 4 componentes principales, ya que permiten reducir la dimensionalidad manteniendo la mayor parte de la información del conjunto de datos.
+
+Las cargas factoriales indican que:
+
+PC1 está asociada principalmente con presupuesto, ingresos, número de actores y votos.
+
+PC2 refleja características de producción internacional.
+
+PC3 se relaciona con la composición del elenco.
+
+PC4 está dominada por la variable popularidad.
+
+PCA es una técnica adecuada para sintetizar la información del dataset.
