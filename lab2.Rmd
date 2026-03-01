@@ -21,6 +21,7 @@ library(PCAmixdata)
 library(paran)
 library(arules)
 library(arulesViz)
+library(Rtsne)
 ```
 
 
@@ -465,3 +466,21 @@ Tras esta depuración, el número de reglas se redujo significativamente (de 809
 Las reglas refinadas muestran que películas con presupuesto medio o alto, elevada popularidad, buena calificación promedio y un elenco amplio presentan entre 90% y 97% de probabilidad de generar ingresos altos. El lift cercano a 3 indica que estas asociaciones ocurren casi tres veces más de lo esperado bajo independencia.
 
 Estos resultados confirman que el desempeño financiero de una película está fuertemente relacionado con su inversión inicial, nivel de exposición pública y percepción de calidad.
+
+## Aplicación de algoritmo
+```{r tsne}
+clean_data <- na.omit(datos_pca)
+tsne_model <- unique(clean_data)
+tsne_thing <- Rtsne(tsne_model, dims = 2, perplexity = 30)
+
+plot(tsne_thing$Y,
+     pch = 19,
+     col = "blue",
+     xlab = "Dimension 1",
+     ylab = "Dimension 2")
+```
+
+Se aplicó el algoritmo t-SNE para reducir la dimensionalidad del conjunto de datos y visualizar su estructura en dos dimensiones. Este método es útil porque permite representar datasets con muchas variables en un espacio más simple, preservando la similitud entre las observaciones.
+
+En la visualización obtenida, cada punto representa una película del conjunto de datos. Se observan varias zonas donde los puntos se concentran, lo que sugiere la existencia de posibles agrupaciones de películas con características similares. Estas agrupaciones pueden estar relacionadas con variables como popularidad, duración, presupuesto o número de actores.
+
