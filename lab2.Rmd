@@ -19,6 +19,8 @@ library(factoextra)
 library(corrplot)
 library(PCAmixdata)
 library(paran)
+library(arules)
+library(arulesViz)
 ```
 
 
@@ -313,3 +315,153 @@ PC4 está fuertemente influenciada por la variable popularity, representando una
 
 PCA es una técnica adecuada para sintetizar la información del dataset.
 
+
+## 2. Reglas de Asociación
+```{r}
+# Preparación para reglas de asociación
+
+#La que se usó antes de saber si valía la pena eliminar variables frecuentes
+
+movies_rules <- movies %>%
+  dplyr::select(
+    genres,
+    originalLanguage,
+    productionCountry,
+    budget,
+    revenue,
+    popularity,
+    runtime,
+    voteAvg,
+    actorsAmount
+  ) %>%
+  filter(budget > 0,
+         revenue > 0) %>%
+  drop_na()
+```
+Se eliminaron películas con presupuesto y recaudación igual a cero, ya que representaban valores faltantes o producciones sin información financiera válida, lo que afectaba la discretización y generación de reglas.
+
+```{r}
+movies_rules_refined <- movies_rules %>%
+  dplyr::select(-originalLanguage, -productionCountry)
+
+movies_trans_refined <- as(movies_rules_refined, "transactions")
+
+rules_refined <- apriori(
+  movies_trans_refined,
+  parameter = list(
+    supp = 0.03,
+    conf = 0.8,
+    minlen = 2
+  )
+)
+
+summary(rules_refined)
+inspect(head(sort(rules_refined, by = "lift"), 10))
+```
+
+```{r}
+movies_rules$budget <- as.numeric(movies_rules$budget)
+movies_rules$revenue <- as.numeric(movies_rules$revenue)
+movies_rules$popularity <- as.numeric(movies_rules$popularity)
+movies_rules$runtime <- as.numeric(movies_rules$runtime)
+movies_rules$voteAvg <- as.numeric(movies_rules$voteAvg)
+movies_rules$actorsAmount <- as.numeric(movies_rules$actorsAmount)
+```
+
+```{r}
+# Discretización
+
+movies_rules$budget <- arules::discretize(movies_rules$budget, method = "interval", breaks = 3)
+movies_rules$revenue <- arules::discretize(movies_rules$revenue, method = "interval", breaks = 3)
+movies_rules$popularity <- arules::discretize(movies_rules$popularity, method = "interval", breaks = 3)
+movies_rules$runtime <- arules::discretize(movies_rules$runtime, method = "interval", breaks = 3)
+movies_rules$voteAvg <- arules::discretize(movies_rules$voteAvg, method = "interval", breaks = 3)
+movies_rules$actorsAmount <- arules::discretize(movies_rules$actorsAmount, method = "interval", breaks = 3)
+```
+Se utilizó discretización por intervalos iguales con tres categorías (bajo, medio y alto), lo que permitió dividir las variables numéricas en rangos homogéneos y evitar problemas derivados de distribuciones altamente concentradas.
+
+```{r}
+# Transacciones
+
+movies_trans <- as(movies_rules, "transactions")
+
+summary(movies_trans)
+```
+
+```{r}
+# A priori - Prueba 1
+
+rules1 <- apriori(
+  movies_trans,
+  parameter = list(
+    supp = 0.05,
+    conf = 0.7,
+    minlen = 2
+  )
+)
+
+summary(rules1)
+
+inspect(head(sort(rules1, by = "lift"), 10))
+```
+Se generaron 564 reglas utilizando el algoritmo A priori con soporte mínimo de 0.05 y confianza mínima de 0.7.
+
+El soporte promedio fue 0.09, mientras que la confianza promedio alcanzó 0.89, lo cual indica que las reglas encontradas presentan alta probabilidad condicional. El valor máximo de lift fue 2.83, lo que sugiere asociaciones que ocurren casi tres veces más frecuentemente de lo esperado bajo independencia.
+
+Las reglas más relevantes muestran que películas con alto presupuesto, elevada popularidad, mayor duración y un elenco numeroso tienden a generar altos ingresos. En particular, las reglas con mayor lift relacionan directamente variables financieras (budget y revenue) con variables de percepción pública (popularity y voteAvg).
+
+Por ejemplo, se observó que películas con presupuesto alto y alta popularidad presentan más del 90% de probabilidad de ubicarse en la categoría de ingresos altos, con un lift superior a 2.7, lo que indica una fuerte asociación.
+
+Asimismo, se identificó que variables como idioma inglés y producción en Estados Unidos aparecen con alta frecuencia, lo que genera reglas menos informativas debido a su dominancia en el dataset. Sin embargo, al analizar las reglas con mayor lift, se evidencia que los factores financieros y de popularidad son los principales determinantes del rendimiento económico.
+
+## ¿Conviene eliminar idioma y país?
+Aunque inicialmente se mantuvieron estas variables para evaluar su impacto en las reglas generadas, el análisis de frecuencia mostró que dominaban el conjunto de datos. Por esta razón, se decidió eliminarlas y volver a ejecutar el algoritmo A priori con el fin de obtener asociaciones más informativas.
+
+```{r}
+# A priori - Prueba 2
+
+rules2 <- apriori(
+  movies_trans,
+  parameter = list(
+    supp = 0.03,
+    conf = 0.8,
+    minlen = 2
+  )
+)
+
+summary(rules2)
+
+inspect(head(sort(rules2, by = "lift"), 10))
+```
+##Comparación entre configuraciones de soporte y confianza
+
+Se realizaron dos configuraciones del algoritmo A priori:
+
+Configuración 1: soporte = 0.05, confianza = 0.7 (564 reglas)
+Configuración 2: soporte = 0.03, confianza = 0.8 (809 reglas)
+
+Al reducir el soporte mínimo se generaron más reglas, ya que se permitieron asociaciones menos frecuentes. Asimismo, al aumentar la confianza mínima se obtuvieron reglas con mayor probabilidad condicional.
+
+La segunda configuración produjo reglas con confianza promedio de 0.94 y lift máximo de 2.91, superiores a los valores obtenidos en la primera configuración. Esto indica asociaciones más fuertes, aunque ligeramente menos frecuentes.
+
+En ambas configuraciones se identificó un patrón consistente: películas con alto presupuesto, alta popularidad, mayor calificación promedio y un elenco amplio presentan alta probabilidad de generar ingresos elevados. Estas asociaciones presentan niveles de confianza superiores al 90% y lift cercanos a 3, lo que indica una relación significativamente mayor a la esperada bajo independencia.
+
+Aunque variables como idioma inglés y producción en Estados Unidos aparecen con alta frecuencia, el análisis muestra que las variables financieras y de popularidad son los principales determinantes del éxito comercial.
+
+Se considera que la segunda configuración (supp = 0.03, conf = 0.8) ofrece reglas más interesantes desde el punto de vista analítico, al presentar mayor confianza y lift sin perder coherencia interpretativa.
+
+
+```{r}
+#Revisar items más frecuentes
+
+itemFrequencyPlot(movies_trans, topN = 15)
+```
+
+##Conclusión final
+El análisis de frecuencia de ítems mostró que el idioma inglés y la producción en Estados Unidos presentaban frecuencias extremadamente altas, generando reglas triviales y poco informativas. Por esta razón, se decidió eliminar dichas variables y volver a ejecutar el algoritmo A priori.
+
+Tras esta depuración, el número de reglas se redujo significativamente (de 809 a 44 reglas), pero la calidad de las asociaciones aumentó considerablemente. El lift mínimo se incrementó a 2.39 y el lift promedio alcanzó aproximadamente 2.55, lo que indica asociaciones fuertes y consistentes.
+
+Las reglas refinadas muestran que películas con presupuesto medio o alto, elevada popularidad, buena calificación promedio y un elenco amplio presentan entre 90% y 97% de probabilidad de generar ingresos altos. El lift cercano a 3 indica que estas asociaciones ocurren casi tres veces más de lo esperado bajo independencia.
+
+Estos resultados confirman que el desempeño financiero de una película está fuertemente relacionado con su inversión inicial, nivel de exposición pública y percepción de calidad.
